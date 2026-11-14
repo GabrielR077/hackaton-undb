@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Firmina",
+    "slug": "firmina",
+    "scheme": "firmina",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir selecionar fotos dos seus produtos."
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "android": {
+      "package": "br.org.firmina.app"
+    }
+  }
+}
