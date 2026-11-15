@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Image, Linking, PanResponder, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, type GestureResponderEvent } from 'react-native';
 
 import pointsByRegion from './semmuMapPoints.json';
@@ -62,6 +62,7 @@ export function SaoLuisMap({ onGestureChange }: { onGestureChange: (active: bool
  const [viewport, setViewport] = useState({ width: 0, height: 0 });
  const [camera, setCamera] = useState<MapCamera>(initialCamera);
  const currentCamera = useRef(camera);
+ const mapView = useRef<ComponentRef<typeof View>>(null);
  const { zoom, x, y } = boundCamera(camera, viewport);
  const size = mapSize(viewport, zoom);
  const pointDiameter = Math.max(3, Math.min(9, size.width / 165));
@@ -110,6 +111,37 @@ export function SaoLuisMap({ onGestureChange }: { onGestureChange: (active: bool
   });
  }, [onGestureChange, viewport]);
 
+ useEffect(() => {
+  if (Platform.OS !== 'web') return;
+  const element: unknown = mapView.current;
+  if (!(element instanceof HTMLElement)) return;
+
+  const handleWheel = (event: WheelEvent) => {
+   if (event.deltaY === 0) return;
+   const current = boundCamera(currentCamera.current, viewport);
+   const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.height : 1;
+   const proposedZoom = current.zoom * Math.exp(-event.deltaY * unit / 360);
+   const nextZoom = Math.min(maxZoom, Math.max(minZoom, proposedZoom));
+   if (nextZoom === current.zoom) return;
+
+   event.preventDefault();
+   const bounds = element.getBoundingClientRect();
+   const pointerX = event.clientX - bounds.left - bounds.width / 2;
+   const pointerY = event.clientY - bounds.top - bounds.height / 2;
+   const ratio = nextZoom / current.zoom;
+   const next = boundCamera({
+    zoom: nextZoom,
+    x: pointerX + (current.x - pointerX) * ratio,
+    y: pointerY + (current.y - pointerY) * ratio,
+   }, viewport);
+   currentCamera.current = next;
+   setCamera(next);
+  };
+
+  element.addEventListener('wheel', handleWheel, { passive: false });
+  return () => element.removeEventListener('wheel', handleWheel);
+ }, [viewport]);
+
  const setMapZoom = (nextZoom: number) => {
   const ratio = nextZoom / zoom;
   const next = boundCamera({ zoom: nextZoom, x: x * ratio, y: y * ratio }, viewport);
@@ -146,7 +178,8 @@ export function SaoLuisMap({ onGestureChange }: { onGestureChange: (active: bool
        <Text style={styles.sourceLink}>Visão geral</Text>
       </Pressable>
      </View>
-     <View style={[styles.map, { height: width >= 820 ? Math.max(520, height * 0.76) : Math.max(320, width * 0.87) }, webTouchStyle]}
+     {Platform.OS === 'web' && <Text style={styles.caption}>Use a roda do mouse sobre o mapa para ajustar o zoom.</Text>}
+     <View ref={mapView} style={[styles.map, { height: width >= 820 ? Math.max(520, height * 0.76) : Math.max(320, width * 0.87) }, webTouchStyle]}
       onLayout={({ nativeEvent: { layout } }) => setViewport(previous =>
        previous.width === layout.width && previous.height === layout.height
         ? previous
