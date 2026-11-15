@@ -35,7 +35,7 @@ function profileImage(user: User): ImageSourcePropType | undefined {
 
 type Event={title:string;date:string;place:string;cancelled?:boolean};
 const initialProducts: Product[] = [
- { id: 'demo-bolsa', name: 'Bolsa de palha trançada', price: '85,00', owner: 'Ana Nascimento' },
+ { id: 'demo-bolsa', name: 'Bolsa de palha trançada', price: '85,00', owner: 'Maria Firmina' },
  { id: 'demo-bolo', name: 'Bolo de macaxeira', price: '35,00', owner: 'Rita Costa' },
  { id: 'demo-colares', name: 'Colares de sementes', price: '48,00', owner: 'Lúcia Santos' },
  { id: 'demo-doce', name: 'Doce de buriti', price: '22,00', owner: 'Rita Costa' },
@@ -159,7 +159,9 @@ export default function Home(){
    const storedUser: User | null = saved.user ?? null;
    const savedUser = storedUser && retiredDemoEmails.includes(storedUser.email.trim().toLowerCase()) ? null : storedUser;
    if (savedUser) {
-    const profile = savedUser.role === 'admin' ? adminAccount : { ...savedUser, email: savedUser.email.trim().toLowerCase() };
+    const normalizedEmail = savedUser.email.trim().toLowerCase();
+    const profile = savedUser.role === 'admin' ? adminAccount :
+     demoUsers.find(account => account.email === normalizedEmail) ?? { ...savedUser, email: normalizedEmail };
     if (!storedCommunity.deletedDemoEmails.includes(profile.email)) {
      setUser(profile);
      if (profile.role === 'admin') setPageHistory(['Painel']);
@@ -169,6 +171,8 @@ export default function Home(){
    setProducts(storedProducts.map((product, index) => ({
     ...product,
     id: product.id ?? 'legacy-' + index,
+    owner: product.ownerEmail === 'empreendedora@firmina.app' || (!product.ownerEmail && product.owner === 'Ana Nascimento')
+     ? 'Maria Firmina' : product.owner,
    })));
    setEvents(saved.events ?? []);
   }).catch(() => {}).finally(() => setReady(true));
@@ -495,7 +499,7 @@ export default function Home(){
      onPress={() => setExpandedSellerCode(expanded ? null : registration.code)} />
    </Card>;
   })}
-  {['Ana Nascimento • Centro','Rita Costa • Anjo da Guarda','Lúcia Santos • Cohab'].map(name =>
+  {['Maria Firmina • Centro','Rita Costa • Anjo da Guarda','Lúcia Santos • Cohab'].map(name =>
    <Card key={name}><Text style={styles.h2}>{name}</Text><Text style={styles.sub}>Cadastro validado • Em atividade</Text></Card>)}
  </>}
  {admin && page === 'Chamados' && <>

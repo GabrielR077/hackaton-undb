@@ -38,7 +38,7 @@ export const legacyAdminEmail = 'cramsv@firmina.app';
 export const demoUsers: readonly User[] = [
  { email: 'compradora@firmina.app', name: 'Mariana Lima', role: 'publico' },
  { email: 'iema@firmina.app', name: 'IEMA', role: 'publico', company: true },
- { email: 'empreendedora@firmina.app', name: 'Ana Nascimento', role: 'empreendedora' },
+ { email: 'empreendedora@firmina.app', name: 'Maria Firmina', role: 'empreendedora' },
  adminAccount,
 ];
 

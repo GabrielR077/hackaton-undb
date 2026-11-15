@@ -8,7 +8,7 @@ type ProductWithImage = {
 };
 
 const demoPhotos = [
- { id: 'demo-bolsa', name: 'Bolsa de palha trançada', owner: 'Ana Nascimento', source: require('../docs/bolsa de palha.jpeg') },
+ { id: 'demo-bolsa', name: 'Bolsa de palha trançada', owner: 'Maria Firmina', source: require('../docs/bolsa de palha.jpeg') },
  { id: 'demo-bolo', name: 'Bolo de macaxeira', owner: 'Rita Costa', source: require('../docs/foto bolo de macaxeira.jpg') },
  { id: 'demo-colares', name: 'Colares de sementes', owner: 'Lúcia Santos', source: require('../docs/colar de semente.jpeg') },
 ];
