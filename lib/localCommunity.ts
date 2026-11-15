@@ -1,3 +1,4 @@
+import type { SellerRegistration } from './sellerRegistration';
 import { getRandomBytesAsync } from 'expo-crypto';
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -28,6 +29,7 @@ export type Community = {
  deletedDemoEmails: string[];
  conversations: Record<string, Message[]>;
  partnerships: PartnershipRequest[];
+ sellerRegistrations: SellerRegistration[];
 };
 
 export const demoPassword = 'firmina123';
@@ -47,6 +49,7 @@ export function conversationKey(firstEmail: string, secondEmail: string) {
 
 export const initialCommunity: Community = {
  accounts: [],
+ sellerRegistrations: [],
  deletedDemoEmails: [],
  conversations: {
   [conversationKey('compradora@firmina.app', 'empreendedora@firmina.app')]: [
@@ -77,6 +80,7 @@ export const partnershipActions: Record<PartnershipStatus, { label: string; stat
 
 export function deleteLocalAccount(community: Community, email: string): Community {
  return {
+  ...community,
   accounts: community.accounts.filter(account => account.email !== email),
   deletedDemoEmails: demoUsers.some(account => account.email === email)
    ? [...new Set([...community.deletedDemoEmails, email])]
