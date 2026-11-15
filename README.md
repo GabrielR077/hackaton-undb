@@ -17,7 +17,7 @@ O Android deve ter o Expo Go ou uma development build compatível. A primeira ex
 | --- | --- | --- |
 | Pessoa compradora | `compradora@firmina.app` | `firmina123` |
 | Empreendedora | `empreendedora@firmina.app` | `firmina123` |
-| SEMMU / CRAMSV | `cramsv@firmina.app` | `firmina123` |
+| Equipe SEMMU | `semmu@firmina.app` | `firmina123` |
 
 Também é possível tocar em uma conta na tela inicial para entrar. Usuários sem login veem apenas entrada, cadastro de pessoa e recuperação de acesso. O catálogo, eventos, parcerias, chat e administração exigem sessão autenticada.
 
