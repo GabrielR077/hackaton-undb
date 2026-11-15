@@ -6,6 +6,7 @@ import { Alert, type AlertButton, Image, KeyboardAvoidingView, Linking, Modal, P
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SellerRegistrationDetails, SellerRegistrationForm } from '../components/SellerRegistrationForm';
 import type { SellerRegistration } from '../lib/sellerRegistration';
+import { ProductRating, ProductReviews, type ProductReview, type Rating } from '../components/ProductReviews';
 import { SaoLuisMap, SemmuMap } from '../components/SemmuMap';
 import { ConversationList, DirectConversation, RegistrationForm, type RegistrationValues } from '../components/CommunityForms';
 import {
@@ -15,7 +16,8 @@ import {
 } from '../lib/localCommunity';
 
 const C={plum:'#3D1A4F',purple:'#80297D',ink:'#212B36',yellow:'#FFE02C',cream:'#FFF9E8',white:'#FFFFFF',muted:'#76717B',line:'#EEE8EF',green:'#31765A'};
-type Product={name:string;price:string;owner:string;ownerEmail?:string;image?:string};
+type Product = { id: string; name: string; price: string; owner: string; ownerEmail?: string; image?: string; reviews?: ProductReview[] };
+type StoredProduct = Omit<Product, 'id'> & { id?: string };
 function ownsProduct(user: User, product: Product) {
  return user.role === 'empreendedora' && (product.ownerEmail
   ? product.ownerEmail === user.email
@@ -23,7 +25,12 @@ function ownsProduct(user: User, product: Product) {
 }
 
 type Event={title:string;date:string;place:string;cancelled?:boolean};
-const initialProducts:Product[]=[{name:'Bolsa de palha trançada',price:'85,00',owner:'Ana Nascimento'},{name:'Bolo de macaxeira',price:'35,00',owner:'Rita Costa'},{name:'Colares de sementes',price:'48,00',owner:'Lúcia Santos'},{name:'Doce de buriti',price:'22,00',owner:'Rita Costa'}];
+const initialProducts: Product[] = [
+ { id: 'demo-bolsa', name: 'Bolsa de palha trançada', price: '85,00', owner: 'Ana Nascimento' },
+ { id: 'demo-bolo', name: 'Bolo de macaxeira', price: '35,00', owner: 'Rita Costa' },
+ { id: 'demo-colares', name: 'Colares de sementes', price: '48,00', owner: 'Lúcia Santos' },
+ { id: 'demo-doce', name: 'Doce de buriti', price: '22,00', owner: 'Rita Costa' },
+];
 function showAlert(title: string, message?: string, buttons?: AlertButton[]) {
  if (Platform.OS !== 'web') {
   Alert.alert(title, message, buttons);
@@ -112,7 +119,8 @@ export default function Home(){
  };
  const [ready,setReady]=useState(false),[user,setUser]=useState<User|null>(null),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[products,setProducts]=useState(initialProducts),[events,setEvents]=useState<Event[]>([{title:'Feira Mulheres que Fazem',date:'22 nov • 09:00',place:'Praça Maria Aragão'},{title:'Oficina de precificação',date:'26 nov • 14:00',place:'CRAMSV — Centro'}]),[modal,setModal]=useState(''),[form,setForm]=useState(''),[price,setPrice]=useState(''),[photo,setPhoto]=useState<string|undefined>(),[toast,setToast]=useState('');
  const [community, setCommunity] = useState<Community>(initialCommunity);
- const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+ const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+ const selectedProduct = products.find(product => product.id === selectedProductId);
  const [editingSeller, setEditingSeller] = useState<SellerRegistration | null>(null);
  const [expandedSellerCode, setExpandedSellerCode] = useState<string | null>(null);
  const [authBusy, setAuthBusy] = useState(false);
@@ -131,7 +139,8 @@ export default function Home(){
     const profile = savedUser.role === 'admin' ? adminAccount : { ...savedUser, email: savedUser.email.trim().toLowerCase() };
     if (!storedCommunity.deletedDemoEmails.includes(profile.email)) setUser(profile);
    }
-   setProducts(saved.products ?? initialProducts);
+   const storedProducts: StoredProduct[] = saved.products ?? initialProducts;
+   setProducts(storedProducts.map((product, index) => ({ ...product, id: product.id ?? 'legacy-' + index })));
    setEvents(saved.events ?? []);
   }).catch(() => {}).finally(() => setReady(true));
  }, []);
@@ -197,8 +206,8 @@ export default function Home(){
   setModal('');
  };
  const openProduct = (product: Product) => {
-  if (!user || user.role === 'admin') return;
-  setSelectedProduct(product);
+  if (!user) return;
+  setSelectedProductId(product.id);
   setModal('Detalhes do produto');
  };
 
@@ -208,8 +217,8 @@ export default function Home(){
    { text: 'Cancelar', style: 'cancel' },
    {
     text: 'Excluir', style: 'destructive', onPress: () => {
-     setProducts(current => current.filter(item => item !== product));
-     setSelectedProduct(null);
+     setProducts(current => current.filter(item => item.id !== product.id));
+     setSelectedProductId(null);
      setModal('');
      say('Produto excluído.');
     },
@@ -217,7 +226,15 @@ export default function Home(){
   ]);
  };
 
- const addProduct=()=>{if(!form.trim()||!price.trim()){showAlert('Preencha nome e preço');return}setProducts([{name:form.trim(),price:price.trim(),owner:user?.name||'Minha loja',ownerEmail:user?.email,image:photo},...products]);setForm('');setPrice('');setPhoto(undefined);setModal('');say('Produto publicado!')};
+ const addProduct=()=>{if(!form.trim()||!price.trim()){showAlert('Preencha nome e preço');return}setProducts([{id:randomUUID(),name:form.trim(),price:price.trim(),owner:user?.name||'Minha loja',ownerEmail:user?.email,image:photo},...products]);setForm('');setPrice('');setPhoto(undefined);setModal('');say('Produto publicado!')};
+ const saveProductReview = (productId: string, rating: Rating, comment: string) => {
+  if (!user) return;
+  const review = { authorEmail: user.email, authorName: user.name, rating, comment };
+  setProducts(current => current.map(product => product.id === productId
+   ? { ...product, reviews: [review, ...(product.reviews ?? []).filter(item => item.authorEmail !== user.email)] }
+   : product));
+ };
+
  const choosePhoto=async()=>{const r=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],quality:.75});if(!r.canceled)setPhoto(r.assets[0].uri)};
  const [eventPlace, setEventPlace] = useState('');
  const addEvent=()=>{if(!form.trim()){showAlert('Informe o título do evento');return}setEvents(currentEvents => [{title:form.trim(),date:'Data a definir',place:eventPlace.trim() || 'São Luís'}, ...currentEvents]);setForm('');setModal('');navigateTo('Eventos');say('Evento cadastrado.')};
@@ -278,9 +295,8 @@ export default function Home(){
  const deleteAccount = () => changeAccount(async () => {
   if (!user) return;
   const nextCommunity = deleteLocalAccount(community, user.email);
-  const nextProducts = user.role === 'empreendedora'
-   ? products.filter(product => product.ownerEmail ? product.ownerEmail !== user.email : product.owner !== user.name)
-   : products;
+  const nextProducts = products.filter(product => !ownsProduct(user, product)).map(product =>
+   product.reviews ? { ...product, reviews: product.reviews.filter(review => review.authorEmail !== user.email) } : product);
   await persistence.current.catch(() => {});
   await AsyncStorage.setItem('firmina-state', JSON.stringify({
    user: null, products: nextProducts, events, community: nextCommunity,
@@ -380,7 +396,7 @@ export default function Home(){
  {page==='Início'&&<>{user.company && <Card>
   <Text style={styles.h2}>Parceria com a SEMMU</Text>
   <Button title="Quero fazer parte" onPress={openPartnership} />
- </Card>}<View style={styles.hero}><Text style={{color:C.yellow,fontSize:12,fontWeight:'800',letterSpacing:1}}>COMPRE DE QUEM FAZ</Text><Text style={styles.heroTitle}>Seu apoio fortalece{ '\n'}quem empreende.</Text><Text style={{color:'#F1EAF5',lineHeight:21}}>Valorize o trabalho das mulheres de São Luís e contribua para sua autonomia.</Text><TouchableOpacity onPress={()=>navigateTo(admin?'Vendedoras':'Catálogo')} style={styles.heroBtn}><Text style={{fontWeight:'800',color:C.plum}}>{admin?'Acessar gestão':'Descobrir produtos'}  →</Text></TouchableOpacity></View>{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}{admin&&<View style={styles.stats}><Stat n="24" label="Empreendedoras"/><Stat n="38" label="Produtos"/><Stat n="3" label="Eventos ativos"/></View>}<Text style={styles.section}>EM DESTAQUE</Text><ProductList data={products.slice(0,3)} onSelect={admin ? () => navigateTo('Catálogo') : openProduct}/><Text style={styles.section}>PRÓXIMOS EVENTOS</Text><EventList events={events.slice(0,2)}/></>}
+ </Card>}<View style={styles.hero}><Text style={{color:C.yellow,fontSize:12,fontWeight:'800',letterSpacing:1}}>COMPRE DE QUEM FAZ</Text><Text style={styles.heroTitle}>Seu apoio fortalece{ '\n'}quem empreende.</Text><Text style={{color:'#F1EAF5',lineHeight:21}}>Valorize o trabalho das mulheres de São Luís e contribua para sua autonomia.</Text><TouchableOpacity onPress={()=>navigateTo(admin?'Vendedoras':'Catálogo')} style={styles.heroBtn}><Text style={{fontWeight:'800',color:C.plum}}>{admin?'Acessar gestão':'Descobrir produtos'}  →</Text></TouchableOpacity></View>{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}{admin&&<View style={styles.stats}><Stat n="24" label="Empreendedoras"/><Stat n="38" label="Produtos"/><Stat n="3" label="Eventos ativos"/></View>}<Text style={styles.section}>EM DESTAQUE</Text><ProductList data={products.slice(0,3)} onSelect={openProduct}/>{admin && <Button title="Ver catálogo" secondary onPress={() => navigateTo('Catálogo')} />}<Text style={styles.section}>PRÓXIMOS EVENTOS</Text><EventList events={events.slice(0,2)}/></>}
  {['Catálogo','Produtos'].includes(page)&&<><Text style={styles.sub}>{page === 'Produtos' ? 'Seus produtos publicados' : 'Conheça o trabalho das empreendedoras locais.'}</Text>{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}<ProductList data={page === 'Produtos' ? products.filter(product => ownsProduct(user, product)) : products}
   onSelect={openProduct} /></>}
  {page==='Eventos'&&<><Text style={styles.sub}>Oficinas e encontros que aproximam negócios e comunidade.</Text>{admin&&<Button title="＋ Cadastrar evento" onPress={()=>open('Novo evento')}/ >}<EventList events={events} admin={admin} onCancel={(idx:number)=>{setEvents(events.map((e,i)=>i===idx?{...e,cancelled:true}:e));say('Cancelamento avisado às contas.')}}/></>}
@@ -444,14 +460,14 @@ export default function Home(){
  {admin && page === 'Mapa' && <SemmuMap onPlanEvent={place => open('Novo evento', place)} onViewMap={() => navigateTo('Mapa de São Luís')} />}
  {admin && page === 'Mapa de São Luís' && <SaoLuisMap onGestureChange={setMapGestureActive} />}
  {toast!==''&&<View style={styles.toast}><Text style={{color:C.white,fontWeight:'700'}}>{toast}</Text></View>}</ScrollView><View style={styles.nav}>{nav.map(n=><TouchableOpacity key={n} onPress={()=>navigateTo(n)} style={styles.navItem}><Text style={{fontSize:19,color:activePage===n?C.purple:C.muted}}>{({Início:'⌂',Catálogo:'▦',Produtos:'▧',Eventos:'◷',Parcerias:'♡',Chat:'◌',Perfil:'◎',Painel:'▤',Vendedoras:'♙',Chamados:'✉',Mapa:'⌖'} as any)[n]}</Text><Text style={{fontSize:10,color:activePage===n?C.purple:C.muted,fontWeight:activePage===n?'800':'500'}}>{n}</Text></TouchableOpacity>)}</View>
- <Modal visible={!!modal} transparent animationType="slide" onRequestClose={()=>{if(!authBusy)setModal('')}}><View style={styles.scrim}><View style={[styles.sheet,webSheet,modal === 'Validar vendedora' && { maxHeight: '94%' }]}><Text style={styles.h2}>{modal === 'Validar vendedora' && editingSeller ? 'Editar cadastro da vendedora' : modal}</Text>{modal === 'Abrir chamado' && user.company ? <>
+ <Modal visible={!!modal} transparent animationType="slide" onRequestClose={()=>{if(!authBusy)setModal('')}}><View style={styles.scrim}><View style={[styles.sheet,webSheet,(modal === 'Validar vendedora' || modal === 'Detalhes do produto') && { maxHeight: '94%' }]}><Text style={styles.h2}>{modal === 'Validar vendedora' && editingSeller ? 'Editar cadastro da vendedora' : modal}</Text>{modal === 'Abrir chamado' && user.company ? <>
  <TextInput accessibilityLabel="Proposta de parceria" placeholder="Descreva a atividade, o local e como sua empresa pode colaborar"
   value={form} onChangeText={setForm} maxLength={700} multiline style={[styles.input, { minHeight: 110, textAlignVertical: 'top' }]} />
  <Button title="Enviar proposta" onPress={submitPartnership} />
 </> : modal === 'Excluir conta' ? <>
  <Text style={styles.sub}>Esta ação remove sua conta, suas conversas, seus chamados e seus produtos cadastrados neste dispositivo.</Text>
  <Button title={authBusy ? 'Excluindo…' : 'Confirmar exclusão'} danger disabled={authBusy} onPress={deleteAccount} />
-</> : modal === 'Detalhes do produto' && selectedProduct && !admin ? <>
+</> : modal === 'Detalhes do produto' && selectedProduct ? <ScrollView keyboardShouldPersistTaps="handled">
  {selectedProduct.image && <Image source={{ uri: selectedProduct.image }} accessibilityLabel={'Foto de ' + selectedProduct.name}
   resizeMode="contain" style={[styles.productImage, { height: 200, marginBottom: 12 }]} />}
  <Text style={styles.h2}>{selectedProduct.name}</Text>
@@ -461,7 +477,9 @@ export default function Home(){
   <Button title="Excluir produto" danger onPress={() => confirmProductDeletion(selectedProduct)} />}
  {user.role === 'publico' &&
   <Button title="Conversar com a empreendedora" onPress={() => contactProductOwner(selectedProduct)} />}
-</> : modal==='Novo produto'?<><TextInput placeholder="Nome do produto" value={form} onChangeText={setForm} style={styles.input}/><TextInput placeholder="Preço (R$)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" style={styles.input}/><TouchableOpacity onPress={choosePhoto} style={styles.photo}><Text style={{color:C.purple,fontWeight:'700'}}>{photo?'Foto selecionada':'＋ Adicionar foto'}</Text></TouchableOpacity><Button title="Publicar produto" onPress={addProduct}/></>:modal==='Novo evento'?<><TextInput placeholder="Nome do evento ou oficina" value={form} onChangeText={setForm} style={styles.input}/><TextInput accessibilityLabel="Local do evento" placeholder="Local do evento" value={eventPlace} onChangeText={setEventPlace} style={styles.input}/><Button title="Cadastrar evento" onPress={addEvent}/></>:modal === 'Validar vendedora' && admin ?
+ <ProductReviews key={selectedProduct.id} reviews={selectedProduct.reviews ?? []} authorEmail={user.email}
+  onSave={(rating, comment) => saveProductReview(selectedProduct.id, rating, comment)} />
+</ScrollView> : modal==='Novo produto'?<><TextInput placeholder="Nome do produto" value={form} onChangeText={setForm} style={styles.input}/><TextInput placeholder="Preço (R$)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" style={styles.input}/><TouchableOpacity onPress={choosePhoto} style={styles.photo}><Text style={{color:C.purple,fontWeight:'700'}}>{photo?'Foto selecionada':'＋ Adicionar foto'}</Text></TouchableOpacity><Button title="Publicar produto" onPress={addProduct}/></>:modal==='Novo evento'?<><TextInput placeholder="Nome do evento ou oficina" value={form} onChangeText={setForm} style={styles.input}/><TextInput accessibilityLabel="Local do evento" placeholder="Local do evento" value={eventPlace} onChangeText={setEventPlace} style={styles.input}/><Button title="Cadastrar evento" onPress={addEvent}/></>:modal === 'Validar vendedora' && admin ?
  <SellerRegistrationForm initial={editingSeller} busy={authBusy} onSave={saveSellerRegistration} />
  : null}<TouchableOpacity disabled={authBusy} onPress={()=>setModal('')} style={{padding:16,alignItems:'center'}}><Text style={{color:C.purple}}>{modal === 'Detalhes do produto' ? 'Fechar' : 'Cancelar'}</Text></TouchableOpacity></View></View></Modal></SafeAreaView>
 }
@@ -478,6 +496,6 @@ function Button({ title, onPress, secondary = false, danger = false, disabled = 
 }
 function Card({children}:any){return <View style={styles.card}>{children}</View>}
 function Stat({n,label}:any){return <View style={styles.stat}><Text style={{fontSize:22,fontWeight:'900',color:C.purple}}>{n}</Text><Text style={{fontSize:11,color:C.muted}}>{label}</Text></View>}
-function ProductList({data,onSelect}:{data:Product[];onSelect:(product:Product)=>void}){return <View style={styles.grid}>{data.map((p:Product,i:number)=><TouchableOpacity key={i} accessibilityRole="button" accessibilityLabel={p.name} onPress={() => onSelect(p)} style={styles.product}>{p.image?<Image source={{uri:p.image}} style={styles.productImage}/>:<View style={[styles.productImage,{backgroundColor:['#F5E5D7','#E9DDED','#F8EDB7'][i%3],alignItems:'center',justifyContent:'center'}]}><Text style={{fontSize:36}}>{['🧺','🍰','📿'][i%3]}</Text></View>}<Text style={{fontWeight:'700',color:C.ink,marginTop:8}} numberOfLines={2}>{p.name}</Text><Text style={{color:C.muted,fontSize:12}}>{p.owner}</Text><Text style={{fontWeight:'900',color:C.purple,marginTop:4}}>R$ {p.price}</Text></TouchableOpacity>)}</View>}
+function ProductList({data,onSelect}:{data:Product[];onSelect:(product:Product)=>void}){return <View style={styles.grid}>{data.map((p:Product,i:number)=><TouchableOpacity key={p.id} accessibilityRole="button" accessibilityLabel={p.name} onPress={() => onSelect(p)} style={styles.product}>{p.image?<Image source={{uri:p.image}} style={styles.productImage}/>:<View style={[styles.productImage,{backgroundColor:['#F5E5D7','#E9DDED','#F8EDB7'][i%3],alignItems:'center',justifyContent:'center'}]}><Text style={{fontSize:36}}>{['🧺','🍰','📿'][i%3]}</Text></View>}<Text style={{fontWeight:'700',color:C.ink,marginTop:8}} numberOfLines={2}>{p.name}</Text><Text style={{color:C.muted,fontSize:12}}>{p.owner}</Text><Text style={{fontWeight:'900',color:C.purple,marginTop:4}}>R$ {p.price}</Text><ProductRating reviews={p.reviews ?? []} /></TouchableOpacity>)}</View>}
 function EventList({events,admin,onCancel}:any){return <>{events.map((e:Event,i:number)=><Card key={i}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={{fontSize:12,color:e.cancelled?'#AA3838':C.purple,fontWeight:'800'}}>{e.cancelled?'CANCELADO':'EVENTO / OFICINA'}</Text><Text style={{color:C.muted,fontSize:12}}>{e.date}</Text></View><Text style={styles.h2}>{e.title}</Text><Text style={styles.sub}>⌖ {e.place}</Text>{admin&&!e.cancelled&&<Button title="Cancelar evento" secondary onPress={()=>showAlert('Cancelar evento','As contas cadastradas serão avisadas.',[{text:'Voltar'},{text:'Confirmar',onPress:()=>onCancel(i)}])}/>}</Card>)}</>}
 const styles:any={mark:{width:64,height:64,borderRadius:22,backgroundColor:C.purple,alignItems:'center',justifyContent:'center'},logo:{fontSize:40,fontWeight:'900',color:C.plum,letterSpacing:-2},tag:{fontSize:9,color:C.purple,fontWeight:'800',letterSpacing:1},h1:{fontSize:27,color:C.ink,fontWeight:'900',marginBottom:6},h2:{fontSize:18,color:C.ink,fontWeight:'800',marginBottom:6},sub:{color:C.muted,lineHeight:20,marginBottom:13},input:{backgroundColor:C.white,borderColor:C.line,borderWidth:1,borderRadius:13,padding:15,marginVertical:6,color:C.ink},button:{backgroundColor:C.purple,padding:15,borderRadius:14,alignItems:'center',marginVertical:8},buttonText:{color:C.white,fontWeight:'800',fontSize:15},demo:{backgroundColor:C.white,borderRadius:16,padding:16,marginTop:22},demoRow:{paddingVertical:9,borderBottomWidth:1,borderColor:C.line},section:{fontSize:12,fontWeight:'900',color:C.plum,letterSpacing:1,marginTop:20,marginBottom:10},top:{paddingHorizontal:20,paddingVertical:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.cream},brandSmall:{fontWeight:'900',fontSize:20,color:C.plum},role:{fontSize:9,color:C.purple,letterSpacing:1,fontWeight:'800'},avatar:{width:40,height:40,borderRadius:20,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},hero:{backgroundColor:C.plum,borderRadius:22,padding:22,marginVertical:16},heroTitle:{color:C.white,fontSize:26,fontWeight:'900',marginVertical:10},heroBtn:{backgroundColor:C.yellow,alignSelf:'flex-start',padding:12,borderRadius:11,marginTop:15},grid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'},product:{width:'48%',backgroundColor:C.white,borderRadius:16,padding:10,marginBottom:12},productImage:{width:'100%',height:118,borderRadius:12},card:{backgroundColor:C.white,borderRadius:16,padding:16,marginVertical:7,borderWidth:1,borderColor:C.line},stats:{flexDirection:'row',gap:8,marginVertical:10},stat:{flex:1,backgroundColor:C.white,borderRadius:14,padding:12,alignItems:'center'},nav:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:C.white,flexDirection:'row',justifyContent:'space-around',paddingTop:10,paddingBottom:12,borderTopWidth:1,borderColor:C.line},navItem:{alignItems:'center',gap:3,flex:1},scrim:{flex:1,backgroundColor:'#0008',justifyContent:'flex-end'},sheet:{backgroundColor:C.cream,borderTopLeftRadius:24,borderTopRightRadius:24,padding:22,paddingBottom:34},photo:{padding:14,borderWidth:1,borderColor:C.purple,borderStyle:'dashed',borderRadius:12,alignItems:'center',marginVertical:8},toast:{position:'absolute',bottom:16,alignSelf:'center',backgroundColor:C.ink,padding:13,borderRadius:12},mapRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:12,borderTopWidth:1,borderColor:C.line}};
