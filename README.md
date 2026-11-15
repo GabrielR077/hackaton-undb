@@ -16,6 +16,7 @@ O Android deve ter o Expo Go ou uma development build compatível. A primeira ex
 | Perfil | E-mail | Senha |
 | --- | --- | --- |
 | Pessoa compradora | `compradora@firmina.app` | `firmina123` |
+| Empresa IEMA | `IEMA@firmina.app` | `firmina123` |
 | Empreendedora | `empreendedora@firmina.app` | `firmina123` |
 | Equipe SEMMU | `semmu@firmina.app` | `firmina123` |
 

@@ -39,8 +39,6 @@ export const demoUsers: readonly User[] = [
  { email: 'compradora@firmina.app', name: 'Mariana Lima', role: 'publico' },
  { email: 'iema@firmina.app', name: 'IEMA', role: 'publico', company: true },
  { email: 'empreendedora@firmina.app', name: 'Ana Nascimento', role: 'empreendedora' },
- { email: 'rita@firmina.app', name: 'Rita Costa', role: 'empreendedora' },
- { email: 'lucia@firmina.app', name: 'Lúcia Santos', role: 'empreendedora' },
  adminAccount,
 ];
 

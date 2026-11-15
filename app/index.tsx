@@ -55,6 +55,13 @@ function showAlert(title: string, message?: string, buttons?: AlertButton[]) {
 }
 
 const semmuContact = 'https://www.saoluis.ma.gov.br/portal/secretarias/57/secretaria-municipal-da-mulher---semmu/';
+const retiredDemoEmails = ['rita@firmina.app', 'lucia@firmina.app', 'iema@dev.br'];
+
+function demoAccountType(account: User) {
+ if (account.role === 'admin') return 'Conta do SEMMU';
+ if (account.role === 'empreendedora') return 'Conta de empreendedora';
+ return account.company ? 'Conta da empresa' : 'Conta da compradora';
+}
 
 const webFrame = { width: '100%', alignSelf: 'center' } as const;
 const webLogin = Platform.OS === 'web' ? { ...webFrame, maxWidth: 480 } : undefined;
@@ -141,9 +148,16 @@ export default function Home(){
   AsyncStorage.getItem('firmina-state').then(raw => {
    if (!raw) return;
    const saved = JSON.parse(raw);
-   const storedCommunity: Community = { ...initialCommunity, ...saved.community };
+   let storedCommunity: Community = { ...initialCommunity, ...saved.community };
+   const retiredStoredEmails = storedCommunity.accounts
+    .filter(account => retiredDemoEmails.includes(account.email.trim().toLowerCase()))
+    .map(account => account.email);
+   for (const retiredEmail of [...retiredDemoEmails, ...retiredStoredEmails]) {
+    storedCommunity = deleteLocalAccount(storedCommunity, retiredEmail);
+   }
    setCommunity(storedCommunity);
-   const savedUser: User | null = saved.user ?? null;
+   const storedUser: User | null = saved.user ?? null;
+   const savedUser = storedUser && retiredDemoEmails.includes(storedUser.email.trim().toLowerCase()) ? null : storedUser;
    if (savedUser) {
     const profile = savedUser.role === 'admin' ? adminAccount : { ...savedUser, email: savedUser.email.trim().toLowerCase() };
     if (!storedCommunity.deletedDemoEmails.includes(profile.email)) setUser(profile);
@@ -201,6 +215,10 @@ export default function Home(){
    return;
   }
 
+  if (retiredDemoEmails.includes(accountEmail)) {
+   showAlert('Conta desativada', 'Este acesso de demonstração foi retirado.');
+   return;
+  }
   const account = community.accounts.find(account => account.email === accountEmail);
   if (account && await verifyPassword(inputPassword, account.passwordVerifier)) {
    enter(account);
@@ -364,7 +382,7 @@ export default function Home(){
 
  if (!hasStarted) return <WelcomeScreen onStart={() => setHasStarted(true)} />;
  if(!ready)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}/>;
- if(!user)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><ScrollView contentContainerStyle={[{flexGrow:1,justifyContent:'center',padding:26},webLogin]}><BackLink label="Voltar para a página inicial" onPress={goBack}/><View style={{alignItems:'center',marginBottom:30}}><View style={styles.mark}><Text style={{fontSize:31,color:C.white}}>✿</Text></View><Text style={styles.logo}>Firmina</Text><Text style={styles.tag}>FEITO POR MULHERES. FEITO EM SÃO LUÍS.</Text></View><Text style={styles.h1}>Entre na sua conta</Text>{toast !== '' && <Text accessibilityLiveRegion="polite" style={styles.sub}>{toast}</Text>}<Text style={styles.sub}>Acesse a comunidade de empreendedoras de São Luís.</Text><TextInput placeholder="E-mail" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/><TextInput placeholder="Senha" secureTextEntry value={password} onChangeText={setPassword} style={styles.input}/><Button title={authBusy ? 'Entrando…' : 'Entrar'} disabled={authBusy} onPress={()=>login()}/><TouchableOpacity onPress={()=>open('Criar conta')} style={{padding:14,alignItems:'center'}}><Text style={{color:C.purple,fontWeight:'700'}}>Criar conta</Text></TouchableOpacity><TouchableOpacity onPress={()=>showAlert('Recuperar senha','Para esta demonstração, use uma das contas abaixo.')} style={{alignItems:'center',padding:6}}><Text style={{color:C.muted}}>Esqueci minha senha</Text></TouchableOpacity><View style={styles.demo}><Text style={styles.section}>CONTAS DE DEMONSTRAÇÃO</Text>{demoAccounts.map(a=><TouchableOpacity key={a.email} disabled={authBusy} onPress={()=>login(a.email,demoPassword)} style={[styles.demoRow,{flexDirection:'row',alignItems:'center',gap:12}]}>{profileImage(a) ? <Image source={profileImage(a)} accessibilityLabel={'Foto de perfil de '+a.name} style={{width:42,height:42,borderRadius:21}} /> : <View style={styles.avatar}><Text style={{color:C.plum,fontWeight:'800'}}>{a.name.charAt(0)}</Text></View>}<View><Text style={{color:C.ink,fontWeight:'600'}}>{a.name}</Text><Text style={{color:C.muted,fontSize:12}}>{a.email} • toque para entrar</Text></View></TouchableOpacity>)}<Text style={{fontSize:12,color:C.muted,marginTop:4}}>Senha: {demoPassword}</Text></View></ScrollView></KeyboardAvoidingView>{modal === 'Criar conta' && <Modal visible transparent animationType="slide"
+ if(!user)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><ScrollView contentContainerStyle={[{flexGrow:1,justifyContent:'center',padding:26},webLogin]}><BackLink label="Voltar para a página inicial" onPress={goBack}/><View style={{alignItems:'center',marginBottom:30}}><View style={styles.mark}><Text style={{fontSize:31,color:C.white}}>✿</Text></View><Text style={styles.logo}>Firmina</Text><Text style={styles.tag}>FEITO POR MULHERES. FEITO EM SÃO LUÍS.</Text></View><Text style={styles.h1}>Entre na sua conta</Text>{toast !== '' && <Text accessibilityLiveRegion="polite" style={styles.sub}>{toast}</Text>}<Text style={styles.sub}>Acesse a comunidade de empreendedoras de São Luís.</Text><TextInput placeholder="E-mail" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/><TextInput placeholder="Senha" secureTextEntry value={password} onChangeText={setPassword} style={styles.input}/><Button title={authBusy ? 'Entrando…' : 'Entrar'} disabled={authBusy} onPress={()=>login()}/><TouchableOpacity onPress={()=>open('Criar conta')} style={{padding:14,alignItems:'center'}}><Text style={{color:C.purple,fontWeight:'700'}}>Criar conta</Text></TouchableOpacity><TouchableOpacity onPress={()=>showAlert('Recuperar senha','Para esta demonstração, use uma das contas abaixo.')} style={{alignItems:'center',padding:6}}><Text style={{color:C.muted}}>Esqueci minha senha</Text></TouchableOpacity><View style={styles.demo}><Text style={styles.section}>CONTAS DE DEMONSTRAÇÃO</Text>{demoAccounts.map(a=><TouchableOpacity key={a.email} disabled={authBusy} onPress={()=>login(a.email,demoPassword)} style={[styles.demoRow,{flexDirection:'row',alignItems:'center',gap:12}]}>{profileImage(a) ? <Image source={profileImage(a)} accessibilityLabel={'Foto de perfil de '+a.name} style={{width:42,height:42,borderRadius:21}} /> : <View style={styles.avatar}><Text style={{color:C.plum,fontWeight:'800'}}>{a.name.charAt(0)}</Text></View>}<View style={{flex:1}}><View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8}}><Text style={{color:C.ink,fontWeight:'600',flexShrink:1}}>{a.name}</Text><Text style={{color:C.purple,fontSize:10,fontWeight:'700',textAlign:'right'}}>{demoAccountType(a)}</Text></View><Text style={{color:C.muted,fontSize:12}}>{a.email === 'iema@firmina.app' ? 'IEMA@firmina.app' : a.email} • toque para entrar</Text></View></TouchableOpacity>)}<Text style={{fontSize:12,color:C.muted,marginTop:4}}>Senha: {demoPassword}</Text></View></ScrollView></KeyboardAvoidingView>{modal === 'Criar conta' && <Modal visible transparent animationType="slide"
   onRequestClose={() => { if (!authBusy) setModal(''); }}>
   <View style={styles.scrim}><View style={[styles.sheet, webSheet, { maxHeight: '92%' }]}>
    <RegistrationForm busy={authBusy} onRegister={register} onCancel={() => setModal('')} />
