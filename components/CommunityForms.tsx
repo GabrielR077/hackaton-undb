@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Message, User } from '../lib/localCommunity';
 
 export type RegistrationValues = { name: string; email: string; password: string; document: string; company: boolean };
@@ -59,7 +59,8 @@ export function ConversationList({ contacts, onOpen }: {
    {contacts.map(({ user, lastMessage }) => (
     <Pressable key={user.email} accessibilityRole="button" accessibilityLabel={'Conversar com ' + user.name}
      onPress={() => onOpen(user.email)} style={styles.contact}>
-     <View style={styles.avatar}><Text style={styles.actionText}>{user.name.charAt(0).toUpperCase()}</Text></View>
+     {contactAvatar(user) ? <Image source={contactAvatar(user)} accessibilityLabel={'Foto de perfil de ' + user.name} style={styles.avatar} /> :
+      <View style={styles.avatar}><Text style={styles.actionText}>{user.name.charAt(0).toUpperCase()}</Text></View>}
      <View style={styles.contactLabel}>
       <Text style={styles.heading}>{user.name}</Text>
       <Text numberOfLines={1} style={styles.muted}>
@@ -71,6 +72,13 @@ export function ConversationList({ contacts, onOpen }: {
    ))}
   </View>
  );
+}
+
+function contactAvatar(user: Contact) {
+ if (user.email === 'iema@firmina.app') return require('../docs/logo IEMA.jpeg');
+ if (user.email === 'compradora@firmina.app') return require('../docs/foto mulher compradora.jpg');
+ if (user.email === 'empreendedora@firmina.app') return require('../docs/mulhere empreendedora.png');
+ return undefined;
 }
 
 export function DirectConversation({ contactName, ownEmail, messages, onMessage }: {

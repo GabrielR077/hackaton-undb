@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, type AlertButton, Image, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, type AlertButton, Image, type ImageSourcePropType, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SellerRegistrationDetails, SellerRegistrationForm } from '../components/SellerRegistrationForm';
 import type { SellerRegistration } from '../lib/sellerRegistration';
+import { productImageSource } from '../lib/productImages';
 import { ProductRating, ProductReviews, type ProductReview, type Rating } from '../components/ProductReviews';
 import { SaoLuisMap, SemmuMap } from '../components/SemmuMap';
 import { ConversationList, DirectConversation, RegistrationForm, type RegistrationValues } from '../components/CommunityForms';
@@ -16,12 +17,20 @@ import {
 } from '../lib/localCommunity';
 
 const C={plum:'#3D1A4F',purple:'#80297D',ink:'#212B36',yellow:'#FFE02C',cream:'#FFF9E8',white:'#FFFFFF',muted:'#76717B',line:'#EEE8EF',green:'#31765A'};
-type Product = { id: string; name: string; price: string; owner: string; ownerEmail?: string; image?: string; reviews?: ProductReview[] };
+type Product = { id: string; name: string; price: string; owner: string; ownerEmail?: string; image?: string | ImageSourcePropType; reviews?: ProductReview[] };
 type StoredProduct = Omit<Product, 'id'> & { id?: string };
 function ownsProduct(user: User, product: Product) {
  return user.role === 'empreendedora' && (product.ownerEmail
   ? product.ownerEmail === user.email
   : product.owner === user.name);
+}
+
+function profileImage(user: User): ImageSourcePropType | undefined {
+ if (user.role === 'admin') return require('../docs/logo SEMMU.jpg');
+ if (user.email === 'iema@firmina.app') return require('../docs/logo IEMA.jpeg');
+ if (user.email === 'compradora@firmina.app') return require('../docs/foto mulher compradora.jpg');
+ if (user.email === 'empreendedora@firmina.app') return require('../docs/mulhere empreendedora.png');
+ return undefined;
 }
 
 type Event={title:string;date:string;place:string;cancelled?:boolean};
@@ -140,7 +149,10 @@ export default function Home(){
     if (!storedCommunity.deletedDemoEmails.includes(profile.email)) setUser(profile);
    }
    const storedProducts: StoredProduct[] = saved.products ?? initialProducts;
-   setProducts(storedProducts.map((product, index) => ({ ...product, id: product.id ?? 'legacy-' + index })));
+   setProducts(storedProducts.map((product, index) => ({
+    ...product,
+    id: product.id ?? 'legacy-' + index,
+   })));
    setEvents(saved.events ?? []);
   }).catch(() => {}).finally(() => setReady(true));
  }, []);
@@ -352,7 +364,7 @@ export default function Home(){
 
  if (!hasStarted) return <WelcomeScreen onStart={() => setHasStarted(true)} />;
  if(!ready)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}/>;
- if(!user)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><ScrollView contentContainerStyle={[{flexGrow:1,justifyContent:'center',padding:26},webLogin]}><BackLink label="Voltar para a página inicial" onPress={goBack}/><View style={{alignItems:'center',marginBottom:30}}><View style={styles.mark}><Text style={{fontSize:31,color:C.white}}>✿</Text></View><Text style={styles.logo}>Firmina</Text><Text style={styles.tag}>FEITO POR MULHERES. FEITO EM SÃO LUÍS.</Text></View><Text style={styles.h1}>Entre na sua conta</Text>{toast !== '' && <Text accessibilityLiveRegion="polite" style={styles.sub}>{toast}</Text>}<Text style={styles.sub}>Acesse a comunidade de empreendedoras de São Luís.</Text><TextInput placeholder="E-mail" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/><TextInput placeholder="Senha" secureTextEntry value={password} onChangeText={setPassword} style={styles.input}/><Button title={authBusy ? 'Entrando…' : 'Entrar'} disabled={authBusy} onPress={()=>login()}/><TouchableOpacity onPress={()=>open('Criar conta')} style={{padding:14,alignItems:'center'}}><Text style={{color:C.purple,fontWeight:'700'}}>Criar conta</Text></TouchableOpacity><TouchableOpacity onPress={()=>showAlert('Recuperar senha','Para esta demonstração, use uma das contas abaixo.')} style={{alignItems:'center',padding:6}}><Text style={{color:C.muted}}>Esqueci minha senha</Text></TouchableOpacity><View style={styles.demo}><Text style={styles.section}>CONTAS DE DEMONSTRAÇÃO</Text>{demoAccounts.map(a=><TouchableOpacity key={a.email} disabled={authBusy} onPress={()=>login(a.email,demoPassword)} style={styles.demoRow}><Text style={{color:C.ink,fontWeight:'600'}}>{a.name}</Text><Text style={{color:C.muted,fontSize:12}}>{a.email} • toque para entrar</Text></TouchableOpacity>)}<Text style={{fontSize:12,color:C.muted,marginTop:4}}>Senha: {demoPassword}</Text></View></ScrollView></KeyboardAvoidingView>{modal === 'Criar conta' && <Modal visible transparent animationType="slide"
+ if(!user)return <SafeAreaView style={{flex:1,backgroundColor:C.cream}}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><ScrollView contentContainerStyle={[{flexGrow:1,justifyContent:'center',padding:26},webLogin]}><BackLink label="Voltar para a página inicial" onPress={goBack}/><View style={{alignItems:'center',marginBottom:30}}><View style={styles.mark}><Text style={{fontSize:31,color:C.white}}>✿</Text></View><Text style={styles.logo}>Firmina</Text><Text style={styles.tag}>FEITO POR MULHERES. FEITO EM SÃO LUÍS.</Text></View><Text style={styles.h1}>Entre na sua conta</Text>{toast !== '' && <Text accessibilityLiveRegion="polite" style={styles.sub}>{toast}</Text>}<Text style={styles.sub}>Acesse a comunidade de empreendedoras de São Luís.</Text><TextInput placeholder="E-mail" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/><TextInput placeholder="Senha" secureTextEntry value={password} onChangeText={setPassword} style={styles.input}/><Button title={authBusy ? 'Entrando…' : 'Entrar'} disabled={authBusy} onPress={()=>login()}/><TouchableOpacity onPress={()=>open('Criar conta')} style={{padding:14,alignItems:'center'}}><Text style={{color:C.purple,fontWeight:'700'}}>Criar conta</Text></TouchableOpacity><TouchableOpacity onPress={()=>showAlert('Recuperar senha','Para esta demonstração, use uma das contas abaixo.')} style={{alignItems:'center',padding:6}}><Text style={{color:C.muted}}>Esqueci minha senha</Text></TouchableOpacity><View style={styles.demo}><Text style={styles.section}>CONTAS DE DEMONSTRAÇÃO</Text>{demoAccounts.map(a=><TouchableOpacity key={a.email} disabled={authBusy} onPress={()=>login(a.email,demoPassword)} style={[styles.demoRow,{flexDirection:'row',alignItems:'center',gap:12}]}>{profileImage(a) ? <Image source={profileImage(a)} accessibilityLabel={'Foto de perfil de '+a.name} style={{width:42,height:42,borderRadius:21}} /> : <View style={styles.avatar}><Text style={{color:C.plum,fontWeight:'800'}}>{a.name.charAt(0)}</Text></View>}<View><Text style={{color:C.ink,fontWeight:'600'}}>{a.name}</Text><Text style={{color:C.muted,fontSize:12}}>{a.email} • toque para entrar</Text></View></TouchableOpacity>)}<Text style={{fontSize:12,color:C.muted,marginTop:4}}>Senha: {demoPassword}</Text></View></ScrollView></KeyboardAvoidingView>{modal === 'Criar conta' && <Modal visible transparent animationType="slide"
   onRequestClose={() => { if (!authBusy) setModal(''); }}>
   <View style={styles.scrim}><View style={[styles.sheet, webSheet, { maxHeight: '92%' }]}>
    <RegistrationForm busy={authBusy} onRegister={register} onCancel={() => setModal('')} />
@@ -391,8 +403,9 @@ export default function Home(){
   if (owner) openConversation(owner.user.email);
  };
  const activePage = thread ? 'Chat' : page;
+ const selectedProductPhoto = selectedProduct ? productImageSource(selectedProduct) : undefined;
  const heading=thread?.name ?? (page==='Início'?(admin?'Painel administrativo':seller?'Olá, '+user.name.split(' ')[0]+' 👋':'Olá, '+user.name.split(' ')[0]+' 👋'):page);
- return <SafeAreaView style={[{flex:1,backgroundColor:C.cream},webDashboard,page === 'Mapa de São Luís' && Platform.OS === 'web' && {maxWidth:1440}]}><View style={styles.top}><View><Text style={styles.brandSmall}>✿ Firmina</Text><Text style={styles.role}>{roleLabel.toUpperCase()}</Text></View><TouchableOpacity style={styles.avatar} onPress={()=>navigateTo('Perfil')}><Text style={{color:C.plum,fontWeight:'800'}}>{user.name.charAt(0)}</Text></TouchableOpacity></View><ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={Platform.OS === 'web' || page !== 'Mapa de São Luís' || !mapGestureActive} contentContainerStyle={{padding:20,paddingBottom:120}}><BackLink onPress={goBack}/><Text style={styles.h1}>{heading}</Text>
+ return <SafeAreaView style={[{flex:1,backgroundColor:C.cream},webDashboard,page === 'Mapa de São Luís' && Platform.OS === 'web' && {maxWidth:1440}]}><View style={styles.top}><View><Text style={styles.brandSmall}>✿ Firmina</Text><Text style={styles.role}>{roleLabel.toUpperCase()}</Text></View><TouchableOpacity style={styles.avatar} onPress={()=>navigateTo('Perfil')} accessibilityLabel="Abrir perfil">{profileImage(user) ? <Image source={profileImage(user)} accessibilityLabel={'Foto de perfil de '+user.name} style={{width:40,height:40,borderRadius:20}} /> : <Text style={{color:C.plum,fontWeight:'800'}}>{user.name.charAt(0)}</Text>}</TouchableOpacity></View><ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={Platform.OS === 'web' || page !== 'Mapa de São Luís' || !mapGestureActive} contentContainerStyle={{padding:20,paddingBottom:120}}><BackLink onPress={goBack}/><Text style={styles.h1}>{heading}</Text>
  {page==='Início'&&<>{user.company && <Card>
   <Text style={styles.h2}>Parceria com a SEMMU</Text>
   <Button title="Quero fazer parte" onPress={openPartnership} />
@@ -468,7 +481,7 @@ export default function Home(){
  <Text style={styles.sub}>Esta ação remove sua conta, suas conversas, seus chamados e seus produtos cadastrados neste dispositivo.</Text>
  <Button title={authBusy ? 'Excluindo…' : 'Confirmar exclusão'} danger disabled={authBusy} onPress={deleteAccount} />
 </> : modal === 'Detalhes do produto' && selectedProduct ? <ScrollView keyboardShouldPersistTaps="handled">
- {selectedProduct.image && <Image source={{ uri: selectedProduct.image }} accessibilityLabel={'Foto de ' + selectedProduct.name}
+ {selectedProductPhoto && <Image source={selectedProductPhoto} accessibilityLabel={'Foto de ' + selectedProduct.name}
   resizeMode="contain" style={[styles.productImage, { height: 200, marginBottom: 12 }]} />}
  <Text style={styles.h2}>{selectedProduct.name}</Text>
  <Text style={styles.sub}>Vendido por {selectedProduct.owner}</Text>
@@ -496,6 +509,21 @@ function Button({ title, onPress, secondary = false, danger = false, disabled = 
 }
 function Card({children}:any){return <View style={styles.card}>{children}</View>}
 function Stat({n,label}:any){return <View style={styles.stat}><Text style={{fontSize:22,fontWeight:'900',color:C.purple}}>{n}</Text><Text style={{fontSize:11,color:C.muted}}>{label}</Text></View>}
-function ProductList({data,onSelect}:{data:Product[];onSelect:(product:Product)=>void}){return <View style={styles.grid}>{data.map((p:Product,i:number)=><TouchableOpacity key={p.id} accessibilityRole="button" accessibilityLabel={p.name} onPress={() => onSelect(p)} style={styles.product}>{p.image?<Image source={{uri:p.image}} style={styles.productImage}/>:<View style={[styles.productImage,{backgroundColor:['#F5E5D7','#E9DDED','#F8EDB7'][i%3],alignItems:'center',justifyContent:'center'}]}><Text style={{fontSize:36}}>{['🧺','🍰','📿'][i%3]}</Text></View>}<Text style={{fontWeight:'700',color:C.ink,marginTop:8}} numberOfLines={2}>{p.name}</Text><Text style={{color:C.muted,fontSize:12}}>{p.owner}</Text><Text style={{fontWeight:'900',color:C.purple,marginTop:4}}>R$ {p.price}</Text><ProductRating reviews={p.reviews ?? []} /></TouchableOpacity>)}</View>}
+function ProductList({ data, onSelect }: { data: Product[]; onSelect: (product: Product) => void }) {
+ return <View style={styles.grid}>{data.map((product, index) => {
+  const photo = productImageSource(product);
+  return <TouchableOpacity key={product.id} accessibilityRole="button" accessibilityLabel={product.name}
+   onPress={() => onSelect(product)} style={styles.product}>
+   {photo ? <Image source={photo} accessibilityLabel={'Foto de ' + product.name} resizeMode="cover" style={styles.productImage} /> :
+    <View style={[styles.productImage, { backgroundColor: ['#F5E5D7', '#E9DDED', '#F8EDB7'][index % 3], alignItems: 'center', justifyContent: 'center' }]}>
+     <Text style={{ fontSize: 36 }}>{['🧺', '🍰', '📿'][index % 3]}</Text>
+    </View>}
+   <Text style={{ fontWeight: '700', color: C.ink, marginTop: 8 }} numberOfLines={2}>{product.name}</Text>
+   <Text style={{ color: C.muted, fontSize: 12 }}>{product.owner}</Text>
+   <Text style={{ fontWeight: '900', color: C.purple, marginTop: 4 }}>R$ {product.price}</Text>
+   <ProductRating reviews={product.reviews ?? []} />
+  </TouchableOpacity>;
+ })}</View>;
+}
 function EventList({events,admin,onCancel}:any){return <>{events.map((e:Event,i:number)=><Card key={i}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={{fontSize:12,color:e.cancelled?'#AA3838':C.purple,fontWeight:'800'}}>{e.cancelled?'CANCELADO':'EVENTO / OFICINA'}</Text><Text style={{color:C.muted,fontSize:12}}>{e.date}</Text></View><Text style={styles.h2}>{e.title}</Text><Text style={styles.sub}>⌖ {e.place}</Text>{admin&&!e.cancelled&&<Button title="Cancelar evento" secondary onPress={()=>showAlert('Cancelar evento','As contas cadastradas serão avisadas.',[{text:'Voltar'},{text:'Confirmar',onPress:()=>onCancel(i)}])}/>}</Card>)}</>}
 const styles:any={mark:{width:64,height:64,borderRadius:22,backgroundColor:C.purple,alignItems:'center',justifyContent:'center'},logo:{fontSize:40,fontWeight:'900',color:C.plum,letterSpacing:-2},tag:{fontSize:9,color:C.purple,fontWeight:'800',letterSpacing:1},h1:{fontSize:27,color:C.ink,fontWeight:'900',marginBottom:6},h2:{fontSize:18,color:C.ink,fontWeight:'800',marginBottom:6},sub:{color:C.muted,lineHeight:20,marginBottom:13},input:{backgroundColor:C.white,borderColor:C.line,borderWidth:1,borderRadius:13,padding:15,marginVertical:6,color:C.ink},button:{backgroundColor:C.purple,padding:15,borderRadius:14,alignItems:'center',marginVertical:8},buttonText:{color:C.white,fontWeight:'800',fontSize:15},demo:{backgroundColor:C.white,borderRadius:16,padding:16,marginTop:22},demoRow:{paddingVertical:9,borderBottomWidth:1,borderColor:C.line},section:{fontSize:12,fontWeight:'900',color:C.plum,letterSpacing:1,marginTop:20,marginBottom:10},top:{paddingHorizontal:20,paddingVertical:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.cream},brandSmall:{fontWeight:'900',fontSize:20,color:C.plum},role:{fontSize:9,color:C.purple,letterSpacing:1,fontWeight:'800'},avatar:{width:40,height:40,borderRadius:20,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},hero:{backgroundColor:C.plum,borderRadius:22,padding:22,marginVertical:16},heroTitle:{color:C.white,fontSize:26,fontWeight:'900',marginVertical:10},heroBtn:{backgroundColor:C.yellow,alignSelf:'flex-start',padding:12,borderRadius:11,marginTop:15},grid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'},product:{width:'48%',backgroundColor:C.white,borderRadius:16,padding:10,marginBottom:12},productImage:{width:'100%',height:118,borderRadius:12},card:{backgroundColor:C.white,borderRadius:16,padding:16,marginVertical:7,borderWidth:1,borderColor:C.line},stats:{flexDirection:'row',gap:8,marginVertical:10},stat:{flex:1,backgroundColor:C.white,borderRadius:14,padding:12,alignItems:'center'},nav:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:C.white,flexDirection:'row',justifyContent:'space-around',paddingTop:10,paddingBottom:12,borderTopWidth:1,borderColor:C.line},navItem:{alignItems:'center',gap:3,flex:1},scrim:{flex:1,backgroundColor:'#0008',justifyContent:'flex-end'},sheet:{backgroundColor:C.cream,borderTopLeftRadius:24,borderTopRightRadius:24,padding:22,paddingBottom:34},photo:{padding:14,borderWidth:1,borderColor:C.purple,borderStyle:'dashed',borderRadius:12,alignItems:'center',marginVertical:8},toast:{position:'absolute',bottom:16,alignSelf:'center',backgroundColor:C.ink,padding:13,borderRadius:12},mapRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:12,borderTopWidth:1,borderColor:C.line}};
