@@ -160,7 +160,10 @@ export default function Home(){
    const savedUser = storedUser && retiredDemoEmails.includes(storedUser.email.trim().toLowerCase()) ? null : storedUser;
    if (savedUser) {
     const profile = savedUser.role === 'admin' ? adminAccount : { ...savedUser, email: savedUser.email.trim().toLowerCase() };
-    if (!storedCommunity.deletedDemoEmails.includes(profile.email)) setUser(profile);
+    if (!storedCommunity.deletedDemoEmails.includes(profile.email)) {
+     setUser(profile);
+     if (profile.role === 'admin') setPageHistory(['Painel']);
+    }
    }
    const storedProducts: StoredProduct[] = saved.products ?? initialProducts;
    setProducts(storedProducts.map((product, index) => ({
@@ -186,7 +189,7 @@ export default function Home(){
  const enter = (profile: User) => {
   const { email, name, role, company, documentLastFour } = profile;
   setUser({ email, name, role, company, documentLastFour });
-  setPageHistory(['Início']);
+  setPageHistory([profile.role === 'admin' ? 'Painel' : 'Início']);
   setEmail('');
   setPassword('');
   setModal('');
@@ -422,12 +425,12 @@ export default function Home(){
  };
  const activePage = thread ? 'Chat' : page;
  const selectedProductPhoto = selectedProduct ? productImageSource(selectedProduct) : undefined;
- const heading=thread?.name ?? (page==='Início'?(admin?'Painel administrativo':seller?'Olá, '+user.name.split(' ')[0]+' 👋':'Olá, '+user.name.split(' ')[0]+' 👋'):page);
+ const heading=thread?.name ?? (admin && page === 'Painel' ? 'Painel administrativo' : page==='Início' ? 'Olá, '+user.name.split(' ')[0]+' 👋' : page);
  return <SafeAreaView style={[{flex:1,backgroundColor:C.cream},webDashboard,page === 'Mapa de São Luís' && Platform.OS === 'web' && {maxWidth:1440}]}><View style={styles.top}><View><Text style={styles.brandSmall}>✿ Firmina</Text><Text style={styles.role}>{roleLabel.toUpperCase()}</Text></View><TouchableOpacity style={styles.avatar} onPress={()=>navigateTo('Perfil')} accessibilityLabel="Abrir perfil">{profileImage(user) ? <Image source={profileImage(user)} accessibilityLabel={'Foto de perfil de '+user.name} style={{width:40,height:40,borderRadius:20}} /> : <Text style={{color:C.plum,fontWeight:'800'}}>{user.name.charAt(0)}</Text>}</TouchableOpacity></View><ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={Platform.OS === 'web' || page !== 'Mapa de São Luís' || !mapGestureActive} contentContainerStyle={{padding:20,paddingBottom:120}}><BackLink onPress={goBack}/><Text style={styles.h1}>{heading}</Text>
  {page==='Início'&&<>{user.company && <Card>
   <Text style={styles.h2}>Parceria com a SEMMU</Text>
   <Button title="Quero fazer parte" onPress={openPartnership} />
- </Card>}<View style={styles.hero}><Text style={{color:C.yellow,fontSize:12,fontWeight:'800',letterSpacing:1}}>COMPRE DE QUEM FAZ</Text><Text style={styles.heroTitle}>Seu apoio fortalece{ '\n'}quem empreende.</Text><Text style={{color:'#F1EAF5',lineHeight:21}}>Valorize o trabalho das mulheres de São Luís e contribua para sua autonomia.</Text><TouchableOpacity onPress={()=>navigateTo(admin?'Vendedoras':'Catálogo')} style={styles.heroBtn}><Text style={{fontWeight:'800',color:C.plum}}>{admin?'Acessar gestão':'Descobrir produtos'}  →</Text></TouchableOpacity></View>{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}{admin&&<View style={styles.stats}><Stat n="24" label="Empreendedoras"/><Stat n="38" label="Produtos"/><Stat n="3" label="Eventos ativos"/></View>}<Text style={styles.section}>EM DESTAQUE</Text><ProductList data={products.slice(0,3)} onSelect={openProduct}/>{admin && <Button title="Ver catálogo" secondary onPress={() => navigateTo('Catálogo')} />}<Text style={styles.section}>PRÓXIMOS EVENTOS</Text><EventList events={events.slice(0,2)}/></>}
+ </Card>}{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}<Text style={styles.section}>EM DESTAQUE</Text><ProductList data={products.slice(0,3)} onSelect={openProduct}/><Text style={styles.section}>PRÓXIMOS EVENTOS</Text><EventList events={events.slice(0,2)}/></>}
  {['Catálogo','Produtos'].includes(page)&&<><Text style={styles.sub}>{page === 'Produtos' ? 'Seus produtos publicados' : 'Conheça o trabalho das empreendedoras locais.'}</Text>{seller&&<Button title="＋ Cadastrar produto" onPress={()=>open('Novo produto')}/ >}<ProductList data={page === 'Produtos' ? products.filter(product => ownsProduct(user, product)) : products}
   onSelect={openProduct} /></>}
  {page==='Eventos'&&<><Text style={styles.sub}>Oficinas e encontros que aproximam negócios e comunidade.</Text>{admin&&<Button title="＋ Cadastrar evento" onPress={()=>open('Novo evento')}/ >}<EventList events={events} admin={admin} onCancel={(idx:number)=>{setEvents(events.map((e,i)=>i===idx?{...e,cancelled:true}:e));say('Cancelamento avisado às contas.')}}/></>}
@@ -459,7 +462,24 @@ export default function Home(){
    },
   }))} />}
  {page==='Perfil'&&<><Card><Text style={styles.h2}>{user.name}</Text><Text style={styles.sub}>{user.email}</Text><Text style={styles.sub}>{roleLabel}</Text>{user.documentLastFour && <Text style={styles.sub}>{user.company ? 'CNPJ' : 'CPF'} ••••{user.documentLastFour}</Text>}</Card>{seller&&<Card><Text style={styles.h2}>Sobre meu trabalho</Text><TextInput placeholder="Qualificações, história e especialidades" multiline style={[styles.input,{height:90}]}/><Button title="Salvar perfil" onPress={()=>say('Perfil atualizado')}/></Card>}<Button title="Sair da conta" secondary onPress={logout}/><Button title="Excluir conta" danger onPress={() => open('Excluir conta')}/></>}
- {page==='Painel'&&<><View style={styles.stats}><Stat n="24" label="Empreendedoras"/><Stat n="38" label="Produtos"/><Stat n="3" label="Eventos ativos"/></View><Button title="＋ Cadastrar vendedora" onPress={() => openSellerRegistration()}/><Card><Text style={styles.h2}>Atividade recente</Text><Text style={styles.sub}>{community.partnerships.filter(request => request.status === 'pendente').length} chamados aguardando análise</Text><Text style={styles.sub}>Próximo evento: Feira Mulheres que Fazem</Text></Card></>}
+ {admin && page === 'Painel' && <>
+  <View style={styles.stats}>
+   <Stat n="24" label="Empreendedoras"/><Stat n="38" label="Produtos"/><Stat n="3" label="Eventos ativos"/>
+  </View>
+  <Button title="＋ Cadastrar vendedora" onPress={() => openSellerRegistration()} />
+  <Button title="Acessar mapa da SEMMU" onPress={() => navigateTo('Mapa')} />
+  <Button title="Conferir chamados" secondary onPress={() => navigateTo('Chamados')} />
+  <Card>
+   <Text style={styles.h2}>Atividade recente</Text>
+   <Text style={styles.sub}>{community.partnerships.filter(request => request.status === 'pendente').length} chamados aguardando análise</Text>
+   <Text style={styles.sub}>Próximo evento: Feira Mulheres que Fazem</Text>
+  </Card>
+  <Button title="Ver catálogo" secondary onPress={() => navigateTo('Catálogo')} />
+  <Text style={styles.section}>EM DESTAQUE</Text>
+  <ProductList data={products.slice(0, 3)} onSelect={openProduct} />
+  <Text style={styles.section}>PRÓXIMOS EVENTOS</Text>
+  <EventList events={events.slice(0, 2)} />
+ </>}
  {admin && page === 'Vendedoras' && <>
   <Button title="＋ Validar e cadastrar" onPress={() => openSellerRegistration()} />
   {community.sellerRegistrations.map(registration => {
@@ -544,4 +564,4 @@ function ProductList({ data, onSelect }: { data: Product[]; onSelect: (product: 
  })}</View>;
 }
 function EventList({events,admin,onCancel}:any){return <>{events.map((e:Event,i:number)=><Card key={i}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={{fontSize:12,color:e.cancelled?'#AA3838':C.purple,fontWeight:'800'}}>{e.cancelled?'CANCELADO':'EVENTO / OFICINA'}</Text><Text style={{color:C.muted,fontSize:12}}>{e.date}</Text></View><Text style={styles.h2}>{e.title}</Text><Text style={styles.sub}>⌖ {e.place}</Text>{admin&&!e.cancelled&&<Button title="Cancelar evento" secondary onPress={()=>showAlert('Cancelar evento','As contas cadastradas serão avisadas.',[{text:'Voltar'},{text:'Confirmar',onPress:()=>onCancel(i)}])}/>}</Card>)}</>}
-const styles:any={mark:{width:64,height:64,borderRadius:22,backgroundColor:C.purple,alignItems:'center',justifyContent:'center'},logo:{fontSize:40,fontWeight:'900',color:C.plum,letterSpacing:-2},tag:{fontSize:9,color:C.purple,fontWeight:'800',letterSpacing:1},h1:{fontSize:27,color:C.ink,fontWeight:'900',marginBottom:6},h2:{fontSize:18,color:C.ink,fontWeight:'800',marginBottom:6},sub:{color:C.muted,lineHeight:20,marginBottom:13},input:{backgroundColor:C.white,borderColor:C.line,borderWidth:1,borderRadius:13,padding:15,marginVertical:6,color:C.ink},button:{backgroundColor:C.purple,padding:15,borderRadius:14,alignItems:'center',marginVertical:8},buttonText:{color:C.white,fontWeight:'800',fontSize:15},demo:{backgroundColor:C.white,borderRadius:16,padding:16,marginTop:22},demoRow:{paddingVertical:9,borderBottomWidth:1,borderColor:C.line},section:{fontSize:12,fontWeight:'900',color:C.plum,letterSpacing:1,marginTop:20,marginBottom:10},top:{paddingHorizontal:20,paddingVertical:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.cream},brandSmall:{fontWeight:'900',fontSize:20,color:C.plum},role:{fontSize:9,color:C.purple,letterSpacing:1,fontWeight:'800'},avatar:{width:40,height:40,borderRadius:20,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},hero:{backgroundColor:C.plum,borderRadius:22,padding:22,marginVertical:16},heroTitle:{color:C.white,fontSize:26,fontWeight:'900',marginVertical:10},heroBtn:{backgroundColor:C.yellow,alignSelf:'flex-start',padding:12,borderRadius:11,marginTop:15},grid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'},product:{width:'48%',backgroundColor:C.white,borderRadius:16,padding:10,marginBottom:12},productImage:{width:'100%',height:118,borderRadius:12},card:{backgroundColor:C.white,borderRadius:16,padding:16,marginVertical:7,borderWidth:1,borderColor:C.line},stats:{flexDirection:'row',gap:8,marginVertical:10},stat:{flex:1,backgroundColor:C.white,borderRadius:14,padding:12,alignItems:'center'},nav:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:C.white,flexDirection:'row',justifyContent:'space-around',paddingTop:10,paddingBottom:12,borderTopWidth:1,borderColor:C.line},navItem:{alignItems:'center',gap:3,flex:1},scrim:{flex:1,backgroundColor:'#0008',justifyContent:'flex-end'},sheet:{backgroundColor:C.cream,borderTopLeftRadius:24,borderTopRightRadius:24,padding:22,paddingBottom:34},photo:{padding:14,borderWidth:1,borderColor:C.purple,borderStyle:'dashed',borderRadius:12,alignItems:'center',marginVertical:8},toast:{position:'absolute',bottom:16,alignSelf:'center',backgroundColor:C.ink,padding:13,borderRadius:12},mapRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:12,borderTopWidth:1,borderColor:C.line}};
+const styles:any={mark:{width:64,height:64,borderRadius:22,backgroundColor:C.purple,alignItems:'center',justifyContent:'center'},logo:{fontSize:40,fontWeight:'900',color:C.plum,letterSpacing:-2},tag:{fontSize:9,color:C.purple,fontWeight:'800',letterSpacing:1},h1:{fontSize:27,color:C.ink,fontWeight:'900',marginBottom:6},h2:{fontSize:18,color:C.ink,fontWeight:'800',marginBottom:6},sub:{color:C.muted,lineHeight:20,marginBottom:13},input:{backgroundColor:C.white,borderColor:C.line,borderWidth:1,borderRadius:13,padding:15,marginVertical:6,color:C.ink},button:{backgroundColor:C.purple,padding:15,borderRadius:14,alignItems:'center',marginVertical:8},buttonText:{color:C.white,fontWeight:'800',fontSize:15},demo:{backgroundColor:C.white,borderRadius:16,padding:16,marginTop:22},demoRow:{paddingVertical:9,borderBottomWidth:1,borderColor:C.line},section:{fontSize:12,fontWeight:'900',color:C.plum,letterSpacing:1,marginTop:20,marginBottom:10},top:{paddingHorizontal:20,paddingVertical:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.cream},brandSmall:{fontWeight:'900',fontSize:20,color:C.plum},role:{fontSize:9,color:C.purple,letterSpacing:1,fontWeight:'800'},avatar:{width:40,height:40,borderRadius:20,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},grid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'},product:{width:'48%',backgroundColor:C.white,borderRadius:16,padding:10,marginBottom:12},productImage:{width:'100%',height:118,borderRadius:12},card:{backgroundColor:C.white,borderRadius:16,padding:16,marginVertical:7,borderWidth:1,borderColor:C.line},stats:{flexDirection:'row',gap:8,marginVertical:10},stat:{flex:1,backgroundColor:C.white,borderRadius:14,padding:12,alignItems:'center'},nav:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:C.white,flexDirection:'row',justifyContent:'space-around',paddingTop:10,paddingBottom:12,borderTopWidth:1,borderColor:C.line},navItem:{alignItems:'center',gap:3,flex:1},scrim:{flex:1,backgroundColor:'#0008',justifyContent:'flex-end'},sheet:{backgroundColor:C.cream,borderTopLeftRadius:24,borderTopRightRadius:24,padding:22,paddingBottom:34},photo:{padding:14,borderWidth:1,borderColor:C.purple,borderStyle:'dashed',borderRadius:12,alignItems:'center',marginVertical:8},toast:{position:'absolute',bottom:16,alignSelf:'center',backgroundColor:C.ink,padding:13,borderRadius:12},mapRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:12,borderTopWidth:1,borderColor:C.line}};
